@@ -297,6 +297,8 @@
     .table-wrapper {
       overflow: auto;
       border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      background: radial-gradient(circle at top left, rgba(15,23,42,0.9), #020617);
+      box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.12);
     }
 
     table {
@@ -307,7 +309,6 @@
     }
 
     thead {
-      background: var(--bg-elevated-2);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -317,25 +318,31 @@
       padding: 8px 10px;
       text-align: left;
       border-bottom: 1px solid var(--border-subtle);
-      position: sticky;
-      top: 0;
-      background: var(--bg-elevated-2);
-      font-weight: 500;
+      background: linear-gradient(135deg, #020617, #0b1120);
+      font-weight: 600;
       white-space: nowrap;
+      border-right: 1px solid #020617;
     }
 
     thead th:first-child {
       text-align: center;
       width: 42px;
+      border-top-left-radius: 10px;
     }
 
-    tbody tr:nth-child(odd) { background: rgba(15, 23, 42, 0.9); }
+    thead th:last-child {
+      border-right: none;
+      border-top-right-radius: 10px;
+    }
 
-    tbody tr:nth-child(even) { background: rgba(15, 23, 42, 0.7); }
+    tbody tr:nth-child(odd) { background: rgba(15, 23, 42, 0.96); }
+
+    tbody tr:nth-child(even) { background: rgba(15, 23, 42, 0.86); }
 
     tbody td {
       padding: 6px 10px;
-      border-bottom: 1px solid #020617;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.9);
+      border-right: 1px solid #020617;
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
@@ -344,7 +351,26 @@
 
     tbody td:first-child { text-align: center; }
 
-    tbody tr:hover { background: rgba(34, 197, 94, 0.08); }
+    tbody td:last-child { border-right: none; }
+
+    tbody tr:hover {
+      background: rgba(34, 197, 94, 0.09);
+    }
+
+    /* Highlight selected row */
+    tbody tr.selected-row {
+      background: rgba(34, 197, 94, 0.18) !important;
+      box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.35);
+    }
+
+/* Highlight cost column - yellow and clearer */
+td.cost-cell {
+  font-weight: 700;
+  color: #facc15;                /* Yellow text (tailwind amber-400 style) */
+  background: rgba(250, 204, 21, 0.10);  /* Light yellow highlight */
+  border-bottom-color: rgba(250, 204, 21, 0.25);
+}
+
 
     .row-select {
       cursor: pointer;
@@ -367,6 +393,7 @@
       justify-content: flex-end;
       gap: 18px;
       color: var(--text-muted);
+      box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.6);
     }
 
     .totals-bar .value {
@@ -881,9 +908,19 @@
       masterCheckbox.className = "row-select-master";
       masterCheckbox.addEventListener("change", function (e) {
         const checked = e.target.checked;
+        // Check/uncheck all + toggle selected-row class
         document
-          .querySelectorAll("#dataTable tbody input.row-select")
-          .forEach((cb) => (cb.checked = checked));
+          .querySelectorAll("#dataTable tbody tr")
+          .forEach((rowEl) => {
+            const cb = rowEl.querySelector("input.row-select");
+            if (!cb) return;
+            cb.checked = checked;
+            if (checked) {
+              rowEl.classList.add("selected-row");
+            } else {
+              rowEl.classList.remove("selected-row");
+            }
+          });
         updateStatusText();
       });
       thSelect.appendChild(masterCheckbox);
@@ -907,7 +944,16 @@
         cb.type = "checkbox";
         cb.className = "row-select";
         cb.dataset.rowId = row.__rowId;
-        cb.addEventListener("change", updateStatusText);
+
+        cb.addEventListener("change", function () {
+          if (cb.checked) {
+            tr.classList.add("selected-row");
+          } else {
+            tr.classList.remove("selected-row");
+          }
+          updateStatusText();
+        });
+
         tdSelect.appendChild(cb);
         tr.appendChild(tdSelect);
 
@@ -916,6 +962,11 @@
           const val = row[header];
           td.textContent =
             val === undefined || val === null || val === "" ? "" : val;
+
+          if (header === costHeader) {
+            td.classList.add("cost-cell");
+          }
+
           tr.appendChild(td);
         });
 
@@ -980,10 +1031,9 @@
           total += parseNumeric(row[costHeader]);
         });
         const totalRow = {};
-        headers.forEach((h, idx) => {
+        headers.forEach((h) => {
           totalRow[h] = "";
         });
-        // Put "TOTAL" label in first column and numeric total in cost column
         if (headers.length > 0) {
           totalRow[headers[0]] = "TOTAL";
         }
